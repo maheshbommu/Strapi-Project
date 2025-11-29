@@ -47,6 +47,16 @@ jobs:
     - name: Login to ECR
       uses: aws-actions/amazon-ecr-login@v2
 
+    - name: Create ECR repository if missing
+      run: |
+        aws ecr describe-repositories --repository-names $ECR_REPO_NAME || \
+        aws ecr create-repository --repository-name $ECR_REPO_NAME
+
+    - name: Get ECR URI
+      run: |
+        ECR_URI=$(aws ecr describe-repositories --repository-names $ECR_REPO_NAME --query "repositories[0].repositoryUri" --output text)
+        echo "ECR_URI=$ECR_URI" >> $GITHUB_ENV
+
     - name: Build & Push Docker image to ECR
       run: |
         ECR_URI=$(aws ecr describe-repositories --repository-names $ECR_REPO_NAME --query "repositories[0].repositoryUri" --output text)
