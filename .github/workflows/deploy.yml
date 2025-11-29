@@ -44,18 +44,40 @@ jobs:
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         aws-region: ${{ env.AWS_REGION }}
 
-    - name: Login to ECR
-      uses: aws-actions/amazon-ecr-login@v2
-
-    - name: Create ECR repository if missing
+    - name: Create ECR repository if not exists
       run: |
         aws ecr describe-repositories --repository-names $ECR_REPO_NAME || \
         aws ecr create-repository --repository-name $ECR_REPO_NAME
 
+        # -------------------------
+        # 7. Get ECR URI
+        # -------------------------
     - name: Get ECR URI
       run: |
         ECR_URI=$(aws ecr describe-repositories --repository-names $ECR_REPO_NAME --query "repositories[0].repositoryUri" --output text)
         echo "ECR_URI=$ECR_URI" >> $GITHUB_ENV
+
+        # -------------------------
+        # 8. Login to ECR
+        # -------------------------
+    - name: Login to Amazon ECR
+      run: |
+        aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_URI
+
+        # -------------------------
+        # 9. Build Docker Image (from /app)
+        # -------------------------
+    - name: Build Docker image
+      run: |
+        docker build -t $ECR_URI:latest ./app
+
+
+    # -------------------------
+    # 10. Push Image to ECR
+    # -------------------------
+    - name: Push Docker image
+      run: |
+        docker push $ECR_URI:latest    
 
     - name: Build & Push Docker image to ECR
       run: |
